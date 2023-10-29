@@ -50,7 +50,10 @@ def increase_counter():
             with counter_lock:
                 for clan in data['clans']:
                     if clan in clan_counters:
-                        clan_counters[clan] += 1
+                        if clan == data['clans'][0]:
+                            clan_counters[clan] += 2
+                        else:
+                            clan_counters[clan] += 1
                         logging.info(f'SUCCESS, {clan} count: {clan_counters[clan]}')
                         response[clan] = clan_counters[clan]
                     else:
@@ -78,7 +81,7 @@ def counts():
     with counter_lock:
         sorted_counts = sorted(clan_counters.items(), key=lambda x: x[1], reverse=True)
         logging.info(f'Counts given.')
-        response = {f"now: count_{index + 1}": {clan[0]: clan[1]} for index, clan in enumerate(sorted_counts)}
+        response = {f"count_{index + 1}": {clan[0]: clan[1]} for index, clan in enumerate(sorted_counts)}
         return make_response(jsonify(response), 200)
 
 @app.route('/last_vos', methods=['GET'])
@@ -88,24 +91,29 @@ def get_last_vos():
     else:
         return make_response(jsonify({'message': 'No previous VOS data'}), 404)
         
-@app.route('/reset', methods=['GET'])   
 def reset_counters():
     global last_vos
-    with counter_lock:
-        last_vos = {}
-        sorted_counts = sorted(clan_counters.items(), key=lambda x: x[1], reverse=True)
-        top_2 = [clan[0] for clan in sorted_counts[:2] if clan[1] != 0]
-        for index, clan in enumerate(top_2):
-            last_vos[f"clan_{index + 1}"] = clan
-    for clan in clan_counters:
-        clan_counters[clan] = 0
+    with app.app_context():
+        with counter_lock:
+            last_vos = {}
+            sorted_counts = sorted(clan_counters.items(), key=lambda x: x[1], reverse=True)
+            top_2 = [clan[0] for clan in sorted_counts[:2] if clan[1] != 0]
+            for index, clan in enumerate(top_2):
+                last_vos[f"clan_{index + 1}"] = clan
+            for clan in clan_counters:
+                clan_counters[clan] = 0
     logging.info("Counters reset at " + time.ctime())
-    return make_response(jsonify({'message': 'Counters reset'}), 200)
+    
 
-schedule.every().hour.at(":00").do(reset_counters)
+def scheduled_task():
+    while True:
+        now = time.localtime()
+        if now.tm_min == 37:
+            reset_counters()
+        time.sleep(60) 
+
+scheduler_thread = threading.Thread(target=scheduled_task)
+scheduler_thread.start()
 
 if __name__ == '__main__':
-    app.run()
-    while True:
-        schedule.run_pending()
-        time.sleep(5)
+    app.run(threaded=True)
