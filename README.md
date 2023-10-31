@@ -1,2 +1,2 @@
 # vos-alt1
-  tbd
+   Backend API for Alt1's Voice of Seren app.
