@@ -1,9 +1,9 @@
-# fly.toml app configuration file generated for vos-alt1 on 2023-10-28T09:25:43-06:00
+# fly.toml app configuration file generated for vos-alt1-dev on 2023-11-05T19:48:34-07:00
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = "vos-alt1"
+app = "vos-alt1-dev"
 primary_region = "den"
 
 [build]
@@ -20,8 +20,9 @@ primary_region = "den"
   auto_start_machines = true
   min_machines_running = 1
   processes = ["app"]
-
-[http_service.http_options.response.headers]
-  Access-Control-Allow-Origin = "*"
-  Access-Control-Allow-Methods = "*"
-  Access-Control-Allow-Headers = "*"
+  [http_service.http_options]
+    [http_service.http_options.response]
+      [http_service.http_options.response.headers]
+        Access-Control-Allow-Headers = "*"
+        Access-Control-Allow-Methods = "*"
+        Access-Control-Allow-Origin = "*"

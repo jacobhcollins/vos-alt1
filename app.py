@@ -8,7 +8,8 @@ import threading
 app = Flask(__name__)
 
 logging.basicConfig(level=logging.DEBUG)
-
+users_ips = []
+users_uuids = []
 last_vos = {}
 clan_counters = {
     'iorwerth': 0,
@@ -22,6 +23,16 @@ clan_counters = {
 }
 
 counter_lock = threading.Lock()
+
+def validate_vote(clan1):
+    if last_vos:
+        if clan1 in last_vos.values():
+            return False
+        else:
+            return True
+    else: 
+        return True 
+    
 
 def add_csp_headers(response):
     response.headers.add('Content-Security-Policy', "default-src 'self'; content-src *")
@@ -42,26 +53,32 @@ def apply_csp(response):
 
 @app.route('/increase_counter', methods=['POST'])
 def increase_counter():
-    global ip_addresses_voted
     if request.is_json:
         data = request.get_json()
+        if 'uuid' in data and data['uuid'] not in users_uuids:
+            users_uuids.append(data['uuid']) 
         if 'clans' in data and isinstance(data['clans'], list) and len(data['clans']) == 2:
-            response = {}
-            with counter_lock:
-                for clan in data['clans']:
-                    if clan in clan_counters:
-                        if clan == data['clans'][0]:
-                            clan_counters[clan] += 2
+            valid = validate_vote(data['clans'][0])
+            if valid == True:
+                response = {}
+                with counter_lock:
+                    for clan in data['clans']:
+                        if clan in clan_counters:
+                            if clan == data['clans'][0]:
+                                clan_counters[clan] += 2
+                            else:
+                                clan_counters[clan] += 1
+                            logging.info(f'SUCCESS, valid vote for {clan} counted. Total count for {clan}: {clan_counters[clan]}')
+                            response[clan] = clan_counters[clan]
                         else:
-                            clan_counters[clan] += 1
-                        logging.info(f'SUCCESS, {clan} count: {clan_counters[clan]}')
-                        response[clan] = clan_counters[clan]
-                    else:
-                        response[clan] = 'Invalid clan'
+                            response[clan] = 'Not a valid Prifddinas clan.'
+            else: 
+                response = jsonify({'Error': 'Vote invalid as it voted for a clan in last_vos.'})
+                return make_response(response, 400)
             response = jsonify(response)
             return response
         else:
-            response = jsonify({'error': 'Please provide a list of exactly two clans'})
+            response = jsonify({'Error': 'Try again'})
             return make_response(response, 400)
     else:
         response = jsonify({'error': 'Invalid JSON'})
@@ -70,6 +87,9 @@ def increase_counter():
 @app.route('/vos', methods=['GET'])
 def vos():
     with counter_lock:
+        requester_ip = request.headers['Fly-Client-Ip']
+        if requester_ip not in users_ips:
+            users_ips.append(requester_ip)
         sorted_counts = sorted(clan_counters.items(), key=lambda x: x[1], reverse=True)
         top_2 = [clan[0] for clan in sorted_counts[:2] if clan[1] != 0]
         logging.info(f'Top 2 clans requested')
@@ -95,7 +115,11 @@ def reset_counters():
     global last_vos
     with app.app_context():
         with counter_lock:
-            last_vos = {}
+            logging.info("Unique voters: " + str(len(users_uuids)))
+            logging.info("Unique requesters: " + str(len(users_ips)))
+            last_vos.clear()
+            users_ips.clear()
+            users_uuids.clear()
             sorted_counts = sorted(clan_counters.items(), key=lambda x: x[1], reverse=True)
             top_2 = [clan[0] for clan in sorted_counts[:2] if clan[1] != 0]
             for index, clan in enumerate(top_2):
@@ -103,14 +127,14 @@ def reset_counters():
             for clan in clan_counters:
                 clan_counters[clan] = 0
     logging.info("Counters reset at " + time.ctime())
-    
 
 def scheduled_task():
     while True:
         now = time.localtime()
-        if now.tm_min == 37:
+        if now.tm_min == 59:
             reset_counters()
-        time.sleep(60) 
+            time.sleep(60)
+        time.sleep(10) 
 
 scheduler_thread = threading.Thread(target=scheduled_task)
 scheduler_thread.start()
