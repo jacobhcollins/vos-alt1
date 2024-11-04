@@ -24,9 +24,9 @@ clan_counters = {
 
 counter_lock = threading.Lock()
 
-def validate_vote(clan1):
+def validate_vote(clan1, clan2):
     if last_vos:
-        if clan1 in last_vos.values():
+        if clan1 in last_vos.values() or clan2 in last_vos.values():
             return False
         else:
             return True
@@ -58,7 +58,7 @@ def increase_counter():
         if 'uuid' in data and data['uuid'] not in users_uuids:
             users_uuids.append(data['uuid']) 
         if 'clans' in data and isinstance(data['clans'], list) and len(data['clans']) == 2:
-            valid = validate_vote(data['clans'][0])
+            valid = validate_vote(data['clans'][0], data['clans'][1])
             if valid == True:
                 response = {}
                 with counter_lock:
