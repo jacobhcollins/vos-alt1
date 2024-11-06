@@ -1,8 +1,7 @@
 from flask import Flask, jsonify, make_response, request
-import schedule
 import time
 import logging
-import threading 
+import threading
 
 
 app = Flask(__name__)
@@ -31,7 +30,7 @@ def validate_vote(clan1, clan2):
         else:
             return True
     else: 
-        return True 
+        return True
     
 
 def add_csp_headers(response):

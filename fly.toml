@@ -1,28 +1,33 @@
-# fly.toml app configuration file generated for vos-alt1-dev on 2023-11-05T19:48:34-07:00
+# fly.toml app configuration file generated for vos-alt1 on 2024-11-04T14:50:31-07:00
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = "vos-alt1"
-primary_region = "den"
+app = 'vos-alt1'
+primary_region = 'atl'
 
 [build]
-  builder = "paketobuildpacks/builder:base"
+  dockerfile = 'Dockerfile'
 
 [env]
-  PORT = "8080"
-  PYTHONUNBUFFERED = "1"
+  PORT = '8080'
+  PYTHONUNBUFFERED = '1'
 
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = false
+  auto_stop_machines = 'off'
   auto_start_machines = true
   min_machines_running = 1
-  processes = ["app"]
+  processes = ['app']
+
   [http_service.http_options]
     [http_service.http_options.response]
       [http_service.http_options.response.headers]
-        Access-Control-Allow-Headers = "*"
-        Access-Control-Allow-Methods = "*"
-        Access-Control-Allow-Origin = "*"
+        Access-Control-Allow-Headers = '*'
+        Access-Control-Allow-Methods = '*'
+        Access-Control-Allow-Origin = '*'
+
+[[vm]]
+  size = 'shared-cpu-1x'
+  memory = '256MB'
